@@ -203,6 +203,11 @@ export default function HomePage() {
     setPasswordOpen(false);
   };
 
+  const goManagePhrases = () => {
+    window.location.href = "/phrases";
+    setMenuOpen(false);
+  };
+
   return (
     <main className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -324,15 +329,14 @@ export default function HomePage() {
               token: {token}
             </div>
             {me.user.role === "ADMIN" && (
-              <button
-                className="button"
-                style={{ marginTop: 12, marginRight: 8 }}
-                type="button"
-                onClick={openUsers}
-                disabled={!token}
-              >
-                Users
-              </button>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button className="button" type="button" onClick={openUsers} disabled={!token}>
+                  Users
+                </button>
+                <button className="button" type="button" onClick={goManagePhrases} disabled={!token}>
+                  Manage phrases
+                </button>
+              </div>
             )}
           </div>
         ) : (

@@ -32,6 +32,16 @@ export interface SessionUser {
   userName: string;
 }
 
+export interface PhraseDto {
+  id: string;
+  textEn: string;
+  textGe: string | null;
+  audioEn: string | null;
+  audioGe: string | null;
+  level: string | null;
+  createdAt: string;
+}
+
 export interface SessionResponse {
   accessToken: string;
   refreshToken: string;
@@ -116,4 +126,57 @@ export async function changePassword(token: string, payload: { currentPassword: 
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
+}
+
+export async function adminListPhrases(token: string) {
+  return jsonFetch<{ phrases: PhraseDto[] }>("/admin/phrases", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function adminCreatePhrase(token: string, payload: { textEn: string; textGe?: string; level?: string }) {
+  return jsonFetch<PhraseDto>("/admin/phrases", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminTranslatePhrase(token: string, id: string) {
+  return jsonFetch<{ id: string; textGe: string }>(`/admin/phrases/${id}/translate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function adminTtsPhrase(token: string, id: string, lang: "en" | "de" = "de") {
+  return jsonFetch<{ id: string; audioGe?: string; audioEn?: string }>(`/admin/phrases/${id}/tts`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ lang }),
+  });
+}
+
+export async function adminUpdatePhrase(
+  token: string,
+  id: string,
+  payload: { textEn?: string; textGe?: string; level?: string },
+) {
+  return jsonFetch<PhraseDto>(`/admin/phrases/${id}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminFetchPhraseAudio(token: string, id: string, lang: "en" | "de" = "de") {
+  const res = await fetch(`${API_BASE}/admin/phrases/${id}/audio?lang=${lang}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    return { ok: false, error: `Audio not found (${res.status})` } as ApiResult<string>;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  return { ok: true, data: url } as ApiResult<string>;
 }
