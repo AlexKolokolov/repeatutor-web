@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminListUsers, fetchMe, logout, refreshTokens, type MeResponse } from "../lib/api";
+import { adminListUsers, adminBlockUser, fetchMe, logout, refreshTokens, type MeResponse } from "../lib/api";
 import {
   getToken,
   clearToken,
@@ -19,7 +19,7 @@ export default function HomePage() {
   const [refreshToken, setRefreshState] = useState<string | null>(null);
   const [usersOpen, setUsersOpen] = useState(false);
   const [users, setUsers] = useState<
-    Array<{ id: string; email: string; role: string; createdAt: string; isActive: boolean }>
+    Array<{ id: string; email: string; role: string; createdAt: string; isActive: boolean; isBlocked: boolean; firstName: string; lastName: string; userName: string }>
   >([]);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -106,6 +106,16 @@ export default function HomePage() {
     setUsersError(res.error ?? "Failed to load users");
   };
 
+  const toggleBlock = async (userId: string, block: boolean) => {
+    if (!token) return;
+    const res = await adminBlockUser(token, userId, block);
+    if (!res.ok) {
+      setUsersError(res.error ?? "Failed to update user");
+      return;
+    }
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBlocked: block } : u)));
+  };
+
   return (
     <main className="card">
       <h1>Repeatutor Frontend Shell</h1>
@@ -159,9 +169,29 @@ export default function HomePage() {
                 </div>
                 <div className="muted">{u.email}</div>
                 <div className="muted">id: {u.id}</div>
-                <div className="pill">role: {u.role}</div>
-                <div className="pill" style={{ background: u.isActive ? "#4ade80" : "#f87171", color: "#0f1115" }}>
-                  {u.isActive ? "Active" : "Inactive"}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "6px 0" }}>
+                  <div className="pill">role: {u.role}</div>
+                  <div className="pill" style={{ background: u.isActive ? "#4ade80" : "#f87171", color: "#0f1115" }}>
+                    {u.isActive ? "Active" : "Inactive"}
+                  </div>
+                  <div className="pill" style={{ background: u.isBlocked ? "#f97316" : "#22c55e", color: "#0f1115" }}>
+                    {u.isBlocked ? "Blocked" : "Allowed"}
+                  </div>
+                  {me?.user.id !== u.id && (
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={() => toggleBlock(u.id, !u.isBlocked)}
+                      style={{
+                        background: u.isBlocked
+                          ? "linear-gradient(120deg,#6ae0ff,#6b8bff)"
+                          : "linear-gradient(120deg,#f87171,#fb923c)",
+                        padding: "8px 12px",
+                      }}
+                    >
+                      {u.isBlocked ? "Unblock" : "Block"}
+                    </button>
+                  )}
                 </div>
                 <div className="muted">created: {new Date(u.createdAt).toLocaleString()}</div>
               </div>

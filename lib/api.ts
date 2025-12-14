@@ -80,9 +80,18 @@ export async function adminListUsers(token: string) {
       firstName: string;
       lastName: string;
       userName: string;
+      isBlocked: boolean;
     }>;
   }>("/admin/users", {
     headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function adminBlockUser(token: string, userId: string, block: boolean) {
+  return jsonFetch<{ ok: boolean; blocked: boolean }>(`/admin/users/${userId}/block`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ block }),
   });
 }
 
