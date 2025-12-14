@@ -105,11 +105,20 @@ export async function adminBlockUser(token: string, userId: string, block: boole
   });
 }
 
+const refreshInFlight = new Map<string, Promise<ApiResult<SessionResponse>>>();
+
 export async function refreshTokens(refreshToken: string) {
-  return jsonFetch<SessionResponse>("/auth/refresh", {
+  if (refreshInFlight.has(refreshToken)) {
+    return refreshInFlight.get(refreshToken)!;
+  }
+  const req = jsonFetch<SessionResponse>("/auth/refresh", {
     method: "POST",
     body: JSON.stringify({ refreshToken }),
   });
+  refreshInFlight.set(refreshToken, req);
+  const result = await req;
+  refreshInFlight.delete(refreshToken);
+  return result;
 }
 
 export async function updateProfile(token: string, payload: { email: string; firstName?: string; lastName?: string }) {
