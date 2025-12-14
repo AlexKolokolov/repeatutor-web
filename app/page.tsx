@@ -18,7 +18,9 @@ export default function HomePage() {
   const [token, setTokenState] = useState<string | null>(null);
   const [refreshToken, setRefreshState] = useState<string | null>(null);
   const [usersOpen, setUsersOpen] = useState(false);
-  const [users, setUsers] = useState<Array<{ id: string; email: string; role: string; createdAt: string }>>([]);
+  const [users, setUsers] = useState<
+    Array<{ id: string; email: string; role: string; createdAt: string; isActive: boolean }>
+  >([]);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
 
@@ -34,7 +36,7 @@ export default function HomePage() {
     const load = async () => {
       if (!token) return;
       const res = await fetchMe(token);
-      if (res.ok && res.data) {
+      if (res.ok) {
         setMe(res.data);
         setError(null);
       } else {
@@ -48,7 +50,7 @@ export default function HomePage() {
             setTokenState(r.data.accessToken);
             setRefreshState(r.data.refreshToken);
             const retry = await fetchMe(r.data.accessToken);
-            if (retry.ok && retry.data) {
+            if (retry.ok) {
               setMe(retry.data);
               setError(null);
               return;
@@ -78,7 +80,7 @@ export default function HomePage() {
     setUsersLoading(true);
     const res = await adminListUsers(token);
     setUsersLoading(false);
-    if (res.ok && res.data) {
+    if (res.ok) {
       setUsers(res.data.users);
       setUsersError(null);
       return;
@@ -93,7 +95,7 @@ export default function HomePage() {
         setTokenState(r.data.accessToken);
         setRefreshState(r.data.refreshToken);
         const retry = await adminListUsers(r.data.accessToken);
-        if (retry.ok && retry.data) {
+        if (retry.ok) {
           setUsers(retry.data.users);
           setUsersError(null);
           return;
@@ -151,6 +153,9 @@ export default function HomePage() {
                 <div style={{ fontWeight: 600 }}>{u.email}</div>
                 <div className="muted">id: {u.id}</div>
                 <div className="pill">role: {u.role}</div>
+                <div className="pill" style={{ background: u.isActive ? "#4ade80" : "#f87171", color: "#0f1115" }}>
+                  {u.isActive ? "Active" : "Inactive"}
+                </div>
                 <div className="muted">created: {new Date(u.createdAt).toLocaleString()}</div>
               </div>
             ))}

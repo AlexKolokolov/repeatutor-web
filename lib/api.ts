@@ -67,7 +67,7 @@ export async function logout(token: string) {
 }
 
 export async function adminListUsers(token: string) {
-  return jsonFetch<{ users: Array<{ id: string; email: string; role: string; createdAt: string }> }>("/admin/users", {
+  return jsonFetch<{ users: Array<{ id: string; email: string; role: string; createdAt: string; isActive: boolean }> }>("/admin/users", {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
