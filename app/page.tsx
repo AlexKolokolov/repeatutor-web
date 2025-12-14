@@ -114,8 +114,12 @@ export default function HomePage() {
         <h3>Session</h3>
         {me ? (
           <div>
-            <div>{me.user.email}</div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>
+              {[me.user.firstName, me.user.lastName].filter(Boolean).join(" ") || me.user.userName}
+            </div>
+            <div className="muted">{me.user.email}</div>
             <div className="pill">role: {me.user.role}</div>
+            <div className="pill">username: {me.user.userName}</div>
             <div className="muted" style={{ marginTop: 8, wordBreak: "break-all" }}>
               token: {token}
             </div>
@@ -150,7 +154,10 @@ export default function HomePage() {
           <div>
             {users.map((u) => (
               <div key={u.id} style={{ padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontWeight: 600 }}>{u.email}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.userName} <span className="muted">(@{u.userName})</span>
+                </div>
+                <div className="muted">{u.email}</div>
                 <div className="muted">id: {u.id}</div>
                 <div className="pill">role: {u.role}</div>
                 <div className="pill" style={{ background: u.isActive ? "#4ade80" : "#f87171", color: "#0f1115" }}>

@@ -27,6 +27,9 @@ export interface SessionUser {
   id: string;
   email: string;
   role: string;
+  firstName: string | null;
+  lastName: string | null;
+  userName: string;
 }
 
 export interface SessionResponse {
@@ -39,10 +42,10 @@ export interface MeResponse {
   user: SessionUser;
 }
 
-export async function signUp(email: string, password: string) {
+export async function signUp(email: string, password: string, firstName: string, lastName: string, userName: string) {
   return jsonFetch<SessionResponse>("/auth/signup", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, firstName, lastName, userName }),
   });
 }
 
@@ -67,7 +70,18 @@ export async function logout(token: string) {
 }
 
 export async function adminListUsers(token: string) {
-  return jsonFetch<{ users: Array<{ id: string; email: string; role: string; createdAt: string; isActive: boolean }> }>("/admin/users", {
+  return jsonFetch<{
+    users: Array<{
+      id: string;
+      email: string;
+      role: string;
+      createdAt: string;
+      isActive: boolean;
+      firstName: string;
+      lastName: string;
+      userName: string;
+    }>;
+  }>("/admin/users", {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
