@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8787";
 
-type ApiResult<T> =
+export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
@@ -30,7 +30,8 @@ export interface SessionUser {
 }
 
 export interface SessionResponse {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   user: SessionUser;
 }
 
@@ -68,5 +69,12 @@ export async function logout(token: string) {
 export async function adminListUsers(token: string) {
   return jsonFetch<{ users: Array<{ id: string; email: string; role: string; createdAt: string }> }>("/admin/users", {
     headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function refreshTokens(refreshToken: string) {
+  return jsonFetch<SessionResponse>("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refreshToken }),
   });
 }

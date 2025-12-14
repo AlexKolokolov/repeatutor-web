@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signUp } from "../../lib/api";
-import { setToken } from "../../lib/token";
+import { setToken, setRefreshToken } from "../../lib/token";
 import { useRouter } from "next/navigation";
 import { storePasswordCredential } from "../../lib/credentials";
 
@@ -23,7 +23,8 @@ export default function SignupPage() {
       return;
     }
     await storePasswordCredential(email, password);
-    setToken(res.data.token);
+    setToken(res.data.accessToken);
+    setRefreshToken(res.data.refreshToken);
     router.push("/");
   };
 

@@ -1,14 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminListUsers, fetchMe, logout, type MeResponse } from "../lib/api";
-import { getToken, clearToken } from "../lib/token";
+import { adminListUsers, fetchMe, logout, refreshTokens, type MeResponse } from "../lib/api";
+import {
+  getToken,
+  clearToken,
+  getRefreshToken,
+  setRefreshToken,
+  setToken as storeAccessToken,
+  clearRefreshToken,
+} from "../lib/token";
 import { Modal } from "./components/Modal";
 
 export default function HomePage() {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [token, setTokenState] = useState<string | null>(null);
+  const [refreshToken, setRefreshState] = useState<string | null>(null);
   const [usersOpen, setUsersOpen] = useState(false);
   const [users, setUsers] = useState<Array<{ id: string; email: string; role: string; createdAt: string }>>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
@@ -17,7 +25,9 @@ export default function HomePage() {
   useEffect(() => {
     // Read token on client after mount to avoid SSR/client mismatch.
     const stored = getToken();
+    const storedRefresh = getRefreshToken();
     setTokenState(stored);
+    setRefreshState(storedRefresh);
   }, []);
 
   useEffect(() => {
@@ -28,19 +38,38 @@ export default function HomePage() {
         setMe(res.data);
         setError(null);
       } else {
+        // Try refresh once if we have a refresh token
+        const rt = refreshToken ?? getRefreshToken();
+        if (rt) {
+          const r = await refreshTokens(rt);
+          if (r.ok) {
+            storeAccessToken(r.data.accessToken);
+            setRefreshToken(r.data.refreshToken);
+            setTokenState(r.data.accessToken);
+            setRefreshState(r.data.refreshToken);
+            const retry = await fetchMe(r.data.accessToken);
+            if (retry.ok && retry.data) {
+              setMe(retry.data);
+              setError(null);
+              return;
+            }
+          }
+        }
         setMe(null);
         setError(res.error ?? "Not authenticated");
       }
     };
     load();
-  }, [token]);
+  }, [token, refreshToken]);
 
   const handleLogout = async () => {
     if (!token) return;
     await logout(token);
     clearToken();
+    clearRefreshToken();
     setMe(null);
     setTokenState(null);
+    setRefreshState(null);
   };
 
   const openUsers = async () => {
@@ -52,10 +81,27 @@ export default function HomePage() {
     if (res.ok && res.data) {
       setUsers(res.data.users);
       setUsersError(null);
-    } else {
-      setUsers([]);
-      setUsersError(res.error ?? "Failed to load users");
+      return;
     }
+    // try refresh once
+    const rt = refreshToken ?? getRefreshToken();
+    if (rt) {
+      const r = await refreshTokens(rt);
+      if (r.ok) {
+        storeAccessToken(r.data.accessToken);
+        setRefreshToken(r.data.refreshToken);
+        setTokenState(r.data.accessToken);
+        setRefreshState(r.data.refreshToken);
+        const retry = await adminListUsers(r.data.accessToken);
+        if (retry.ok && retry.data) {
+          setUsers(retry.data.users);
+          setUsersError(null);
+          return;
+        }
+      }
+    }
+    setUsers([]);
+    setUsersError(res.error ?? "Failed to load users");
   };
 
   return (
