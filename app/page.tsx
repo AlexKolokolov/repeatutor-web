@@ -8,6 +8,7 @@ import {
   logout,
   refreshTokens,
   updateProfile,
+  changePassword,
   type MeResponse,
 } from "../lib/api";
 import {
@@ -39,6 +40,12 @@ export default function HomePage() {
   const [profileLast, setProfileLast] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -154,6 +161,15 @@ export default function HomePage() {
     setMenuOpen(false);
   };
 
+  const openPassword = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setPasswordError(null);
+    setPasswordOpen(true);
+    setMenuOpen(false);
+  };
+
   const saveProfile = async () => {
     if (!token || !me) return;
     setProfileSaving(true);
@@ -169,6 +185,22 @@ export default function HomePage() {
     }
     setMe(res.data);
     setProfileOpen(false);
+  };
+
+  const savePassword = async () => {
+    if (!token) return;
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+    setPasswordSaving(true);
+    const res = await changePassword(token, { currentPassword, newPassword });
+    setPasswordSaving(false);
+    if (!res.ok) {
+      setPasswordError(res.error ?? "Failed to update password");
+      return;
+    }
+    setPasswordOpen(false);
   };
 
   return (
@@ -242,6 +274,21 @@ export default function HomePage() {
                   onClick={openProfile}
                 >
                   Profile
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 14px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#e7edf3",
+                    cursor: "pointer",
+                  }}
+                  onClick={openPassword}
+                >
+                  Change password
                 </button>
                 <button
                   type="button"
@@ -381,6 +428,60 @@ export default function HomePage() {
               </button>
               <button className="button" type="button" onClick={saveProfile} disabled={profileSaving}>
                 {profileSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="muted">Not signed in</div>
+        )}
+      </Modal>
+
+      <Modal open={passwordOpen} onClose={() => setPasswordOpen(false)} title="Change password">
+        {me ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label className="muted" htmlFor="current-password">
+              Current password
+            </label>
+            <input
+              id="current-password"
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+
+            <label className="muted" htmlFor="new-password">
+              New password
+            </label>
+            <input
+              id="new-password"
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+
+            <label className="muted" htmlFor="confirm-new-password">
+              Confirm new password
+            </label>
+            <input
+              id="confirm-new-password"
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+            />
+
+            {passwordError && <div style={{ color: "#ffb4b4" }}>{passwordError}</div>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+              <button className="button" type="button" onClick={() => setPasswordOpen(false)} disabled={passwordSaving}>
+                Cancel
+              </button>
+              <button className="button" type="button" onClick={savePassword} disabled={passwordSaving}>
+                {passwordSaving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

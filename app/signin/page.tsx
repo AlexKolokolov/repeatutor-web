@@ -30,13 +30,13 @@ export default function SigninPage() {
 
   return (
     <main className="card">
-      <h1>Sign in</h1>
+      <h1 style={{ textAlign: "center" }}>Sign in</h1>
       <form
         name="login"
         onSubmit={submit}
         method="post"
         autoComplete="on"
-        style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}
+        style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px auto 0", maxWidth: 360 }}
       >
         <label className="muted" htmlFor="login-email">
           Email
@@ -66,7 +66,12 @@ export default function SigninPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <button className="button" type="submit" disabled={loading}>
+        <button
+          className="button"
+          type="submit"
+          disabled={loading}
+          style={{ alignSelf: "center", minWidth: 120, marginTop: 8 }}
+        >
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>

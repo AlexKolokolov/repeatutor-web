@@ -38,13 +38,13 @@ export default function SignupPage() {
 
   return (
     <main className="card">
-      <h1>Create account</h1>
+      <h1 style={{ textAlign: "center" }}>Create account</h1>
       <form
         name="signup"
         onSubmit={submit}
         method="post"
         autoComplete="on"
-        style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}
+        style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px auto 0", maxWidth: 360 }}
       >
         <label className="muted" htmlFor="signup-email">
           Email *
@@ -130,7 +130,12 @@ export default function SignupPage() {
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
         />
-        <button className="button" type="submit" disabled={loading} style={{ alignSelf: "flex-start", minWidth: 120 }}>
+        <button
+          className="button"
+          type="submit"
+          disabled={loading}
+          style={{ alignSelf: "center", minWidth: 120, marginTop: 8 }}
+        >
           {loading ? "Signing up..." : "Sign up"}
         </button>
       </form>

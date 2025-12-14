@@ -109,3 +109,11 @@ export async function updateProfile(token: string, payload: { email: string; fir
     body: JSON.stringify(payload),
   });
 }
+
+export async function changePassword(token: string, payload: { currentPassword: string; newPassword: string }) {
+  return jsonFetch<{ ok: boolean }>("/password", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
