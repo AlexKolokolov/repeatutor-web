@@ -1,0 +1,118 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { adminListUsers, fetchMe, logout, type MeResponse } from "../lib/api";
+import { getToken, clearToken } from "../lib/token";
+import { Modal } from "./components/Modal";
+
+export default function HomePage() {
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
+  const [usersOpen, setUsersOpen] = useState(false);
+  const [users, setUsers] = useState<Array<{ id: string; email: string; role: string; createdAt: string }>>([]);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  useEffect(() => {
+    // Read token on client after mount to avoid SSR/client mismatch.
+    const stored = getToken();
+    setTokenState(stored);
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!token) return;
+      const res = await fetchMe(token);
+      if (res.ok && res.data) {
+        setMe(res.data);
+        setError(null);
+      } else {
+        setMe(null);
+        setError(res.error ?? "Not authenticated");
+      }
+    };
+    load();
+  }, [token]);
+
+  const handleLogout = async () => {
+    if (!token) return;
+    await logout(token);
+    clearToken();
+    setMe(null);
+    setTokenState(null);
+  };
+
+  const openUsers = async () => {
+    if (!token) return;
+    setUsersOpen(true);
+    setUsersLoading(true);
+    const res = await adminListUsers(token);
+    setUsersLoading(false);
+    if (res.ok && res.data) {
+      setUsers(res.data.users);
+      setUsersError(null);
+    } else {
+      setUsers([]);
+      setUsersError(res.error ?? "Failed to load users");
+    }
+  };
+
+  return (
+    <main className="card">
+      <h1>Repeatutor Frontend Shell</h1>
+      <p className="muted">Uses backend at {process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8787"}.</p>
+      <div style={{ marginTop: 28 }}>
+        <h3>Session</h3>
+        {me ? (
+          <div>
+            <div>{me.user.email}</div>
+            <div className="pill">role: {me.user.role}</div>
+            <div className="muted" style={{ marginTop: 8, wordBreak: "break-all" }}>
+              token: {token}
+            </div>
+            {me.user.role === "ADMIN" && (
+              <button
+                className="button"
+                style={{ marginTop: 12, marginRight: 8 }}
+                type="button"
+                onClick={openUsers}
+                disabled={!token}
+              >
+                Users
+              </button>
+            )}
+            <button
+              className="button"
+              style={{ marginTop: 12 }}
+              onClick={handleLogout}
+              type="button"
+              disabled={!token}
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <div className="muted">{error ?? "Not signed in"}</div>
+        )}
+      <Modal open={usersOpen} onClose={() => setUsersOpen(false)} title="Users">
+        {usersLoading && <div className="muted">Loading...</div>}
+        {usersError && <div style={{ color: "#ffb4b4" }}>{usersError}</div>}
+        {!usersLoading && !usersError && (
+          <div>
+            {users.map((u) => (
+              <div key={u.id} style={{ padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ fontWeight: 600 }}>{u.email}</div>
+                <div className="muted">id: {u.id}</div>
+                <div className="pill">role: {u.role}</div>
+                <div className="muted">created: {new Date(u.createdAt).toLocaleString()}</div>
+              </div>
+            ))}
+            {users.length === 0 && <div className="muted">No users found.</div>}
+          </div>
+        )}
+      </Modal>
+      </div>
+    </main>
+  );
+}
