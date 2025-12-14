@@ -10,6 +10,7 @@ export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [userName, setUserName] = useState("");
@@ -18,6 +19,10 @@ export default function SignupPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
     setLoading(true);
     const res = await signUp(email, password, firstName, lastName, userName);
     setLoading(false);
@@ -84,6 +89,21 @@ export default function SignupPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+        <label className="muted" htmlFor="signup-password-confirm">
+          Confirm password *
+        </label>
+        <input
+          id="signup-password-confirm"
+          className="input"
+          type="password"
+          name="confirmPassword"
+          autoComplete="new-password"
+          placeholder="re-enter password"
+          minLength={8}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+        />
         <label className="muted" htmlFor="signup-first-name">
           First name (optional)
         </label>
@@ -110,7 +130,7 @@ export default function SignupPage() {
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
         />
-        <button className="button" type="submit" disabled={loading}>
+        <button className="button" type="submit" disabled={loading} style={{ alignSelf: "flex-start", minWidth: 120 }}>
           {loading ? "Signing up..." : "Sign up"}
         </button>
       </form>
