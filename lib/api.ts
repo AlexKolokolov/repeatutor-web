@@ -101,3 +101,11 @@ export async function refreshTokens(refreshToken: string) {
     body: JSON.stringify({ refreshToken }),
   });
 }
+
+export async function updateProfile(token: string, payload: { email: string; firstName?: string; lastName?: string }) {
+  return jsonFetch<MeResponse>("/auth/profile", {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}

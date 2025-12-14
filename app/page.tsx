@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminListUsers, adminBlockUser, fetchMe, logout, refreshTokens, type MeResponse } from "../lib/api";
+import {
+  adminListUsers,
+  adminBlockUser,
+  fetchMe,
+  logout,
+  refreshTokens,
+  updateProfile,
+  type MeResponse,
+} from "../lib/api";
 import {
   getToken,
   clearToken,
@@ -11,6 +19,7 @@ import {
   clearRefreshToken,
 } from "../lib/token";
 import { Modal } from "./components/Modal";
+import { useRef } from "react";
 
 export default function HomePage() {
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -23,6 +32,14 @@ export default function HomePage() {
   >([]);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileFirst, setProfileFirst] = useState("");
+  const [profileLast, setProfileLast] = useState("");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // Read token on client after mount to avoid SSR/client mismatch.
@@ -64,6 +81,16 @@ export default function HomePage() {
     load();
   }, [token, refreshToken]);
 
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   const handleLogout = async () => {
     if (!token) return;
     await logout(token);
@@ -76,6 +103,7 @@ export default function HomePage() {
 
   const openUsers = async () => {
     if (!token) return;
+    setMenuOpen(false);
     setUsersOpen(true);
     setUsersLoading(true);
     const res = await adminListUsers(token);
@@ -116,10 +144,125 @@ export default function HomePage() {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBlocked: block } : u)));
   };
 
+  const openProfile = () => {
+    if (!me) return;
+    setProfileEmail(me.user.email);
+    setProfileFirst(me.user.firstName ?? "");
+    setProfileLast(me.user.lastName ?? "");
+    setProfileError(null);
+    setProfileOpen(true);
+    setMenuOpen(false);
+  };
+
+  const saveProfile = async () => {
+    if (!token || !me) return;
+    setProfileSaving(true);
+    const res = await updateProfile(token, {
+      email: profileEmail,
+      firstName: profileFirst,
+      lastName: profileLast,
+    });
+    setProfileSaving(false);
+    if (!res.ok) {
+      setProfileError(res.error ?? "Failed to update profile");
+      return;
+    }
+    setMe(res.data);
+    setProfileOpen(false);
+  };
+
   return (
     <main className="card">
-      <h1>Repeatutor Frontend Shell</h1>
-      <p className="muted">Uses backend at {process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8787"}.</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Repeatutor Frontend Shell</h1>
+          <p className="muted" style={{ marginTop: 4 }}>
+            Uses backend at {process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8787"}.
+          </p>
+        </div>
+        {me && (
+          <div style={{ position: "relative" }} ref={menuRef}>
+            <span
+              role="button"
+              aria-label="User menu"
+              onClick={() => setMenuOpen((v) => !v)}
+              style={{
+                display: "inline-flex",
+                justifyContent: "center",
+                alignItems: "center",
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.06)",
+                cursor: "pointer",
+                fontSize: 18,
+                lineHeight: 1,
+                userSelect: "none",
+                transition: "transform 120ms ease",
+              }}
+              onMouseDown={(e) => {
+                const target = e.currentTarget;
+                target.style.transform = "scale(1.08)";
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              ⚙️
+            </span>
+            {menuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "110%",
+                  background: "#111722",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 10,
+                  minWidth: 160,
+                  boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
+                  zIndex: 20,
+                }}
+              >
+                <button
+                  type="button"
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 14px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#e7edf3",
+                    cursor: "pointer",
+                  }}
+                  onClick={openProfile}
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 14px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#e7edf3",
+                    cursor: "pointer",
+                  }}
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <div style={{ marginTop: 28 }}>
         <h3>Session</h3>
         {me ? (
@@ -144,15 +287,6 @@ export default function HomePage() {
                 Users
               </button>
             )}
-            <button
-              className="button"
-              style={{ marginTop: 12 }}
-              onClick={handleLogout}
-              type="button"
-              disabled={!token}
-            >
-              Logout
-            </button>
           </div>
         ) : (
           <div className="muted">{error ?? "Not signed in"}</div>
@@ -198,6 +332,60 @@ export default function HomePage() {
             ))}
             {users.length === 0 && <div className="muted">No users found.</div>}
           </div>
+        )}
+      </Modal>
+
+      <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Profile">
+        {me ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label className="muted">Username (read-only)</label>
+            <input className="input" value={me.user.userName} disabled />
+
+            <label className="muted" htmlFor="profile-email">
+              Email
+            </label>
+            <input
+              id="profile-email"
+              className="input"
+              type="email"
+              value={profileEmail}
+              onChange={(e) => setProfileEmail(e.target.value)}
+            />
+
+            <label className="muted" htmlFor="profile-first">
+              First name
+            </label>
+            <input
+              id="profile-first"
+              className="input"
+              maxLength={50}
+              value={profileFirst}
+              onChange={(e) => setProfileFirst(e.target.value)}
+            />
+
+            <label className="muted" htmlFor="profile-last">
+              Last name
+            </label>
+            <input
+              id="profile-last"
+              className="input"
+              maxLength={50}
+              value={profileLast}
+              onChange={(e) => setProfileLast(e.target.value)}
+            />
+
+            {profileError && <div style={{ color: "#ffb4b4" }}>{profileError}</div>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+              <button className="button" type="button" onClick={() => setProfileOpen(false)} disabled={profileSaving}>
+                Cancel
+              </button>
+              <button className="button" type="button" onClick={saveProfile} disabled={profileSaving}>
+                {profileSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="muted">Not signed in</div>
         )}
       </Modal>
       </div>
