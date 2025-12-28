@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   adminListUsers,
   adminBlockUser,
@@ -23,6 +24,7 @@ import { Modal } from "./components/Modal";
 import { useRef } from "react";
 
 export default function HomePage() {
+  const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [token, setTokenState] = useState<string | null>(null);
@@ -81,12 +83,17 @@ export default function HomePage() {
             }
           }
         }
+        clearToken();
+        clearRefreshToken();
+        setTokenState(null);
+        setRefreshState(null);
         setMe(null);
         setError(res.error ?? "Not authenticated");
+        router.push("/signin");
       }
     };
     load();
-  }, [token, refreshToken]);
+  }, [token, refreshToken, router]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
