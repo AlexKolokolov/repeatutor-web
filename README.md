@@ -11,7 +11,6 @@
 - `/` home: shows session info and logout button if signed in.
 - `/signup`: create account (calls `POST /auth/signup`).
 - `/signin`: sign in (calls `POST /auth/signin`).
-- `/admin`: list users (calls `GET /admin/users`; needs admin token).
 
 ## Tokens
 - Tokens are stored in `localStorage` (`repeatutor_token`). Admin page also accepts manual token entry (e.g., `dev-admin-token`, `seed-admin-token`, or a login token from admin user).

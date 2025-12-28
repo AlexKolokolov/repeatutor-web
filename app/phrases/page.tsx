@@ -1,19 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  adminListPhrases,
-  adminCreatePhrase,
-  adminTranslatePhrase,
-  adminTtsPhrase,
-  adminFetchPhraseAudio,
-  adminUpdatePhrase,
-  type PhraseDto,
-} from "../../lib/api";
-import { getToken, getRefreshToken, setRefreshToken, setToken as storeAccessToken, clearToken, clearRefreshToken } from "../../lib/token";
-import { fetchMe, refreshTokens, logout } from "../../lib/api";
+import { type PhraseDto } from "../../lib/api";
+import { useAuthedApi } from "../../lib/authedApi";
 
 export default function PhrasesPage() {
+  const authedApi = useAuthedApi();
   const [phrases, setPhrases] = useState<PhraseDto[]>([]);
   const [newText, setNewText] = useState("");
   const [newTextGe, setNewTextGe] = useState("");
@@ -23,34 +15,9 @@ export default function PhrasesPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
   const [lastSaved, setLastSaved] = useState<Record<string, { textEn: string; textGe: string | null; level: string | null }>>({});
-  const token = getToken();
-  const refreshToken = getRefreshToken();
-
-  const ensureAuth = async () => {
-    if (!token) return null;
-    const me = await fetchMe(token);
-    if (me.ok) return token;
-    if (refreshToken) {
-      const r = await refreshTokens(refreshToken);
-      if (r.ok) {
-        storeAccessToken(r.data.accessToken);
-        setRefreshToken(r.data.refreshToken);
-        return r.data.accessToken;
-      }
-    }
-    await logout(token);
-    clearToken();
-    clearRefreshToken();
-    return null;
-  };
 
   const load = async () => {
-    const t = await ensureAuth();
-    if (!t) {
-      setError("Not authenticated");
-      return;
-    }
-    const res = await adminListPhrases(t);
+    const res = await authedApi.adminListPhrases();
     if (res.ok) {
       setPhrases(res.data.phrases);
       const saved: Record<string, { textEn: string; textGe: string | null; level: string | null }> = {};
@@ -70,10 +37,9 @@ export default function PhrasesPage() {
   }, []);
 
   const addPhrase = async () => {
-    const t = await ensureAuth();
-    if (!t || !newText.trim()) return;
+    if (!newText.trim()) return;
     setLoading(true);
-    const res = await adminCreatePhrase(t, { textEn: newText.trim(), level: newLevel || undefined, textGe: newTextGe || undefined });
+    const res = await authedApi.adminCreatePhrase({ textEn: newText.trim(), level: newLevel || undefined, textGe: newTextGe || undefined });
     setLoading(false);
     if (res.ok) {
       setPhrases([res.data, ...phrases]);
@@ -91,10 +57,8 @@ export default function PhrasesPage() {
   };
 
   const translate = async (id: string) => {
-    const t = await ensureAuth();
-    if (!t) return;
     const current = phrases.find((p) => p.id === id);
-    const res = await adminTranslatePhrase(t, id);
+    const res = await authedApi.adminTranslatePhrase(id);
     if (res.ok) {
       setPhrases((prev) => prev.map((p) => (p.id === id ? { ...p, textGe: res.data.textGe } : p)));
       setLastSaved((prev) => ({
@@ -113,10 +77,8 @@ export default function PhrasesPage() {
     if (prev && prev.textEn === current.textEn && prev.textGe === current.textGe && prev.level === current.level) {
       return;
     }
-    const t = await ensureAuth();
-    if (!t) return;
     setSavingId(id);
-    const res = await adminUpdatePhrase(t, id, {
+    const res = await authedApi.adminUpdatePhrase(id, {
       textEn: current.textEn,
       textGe: current.textGe ?? undefined,
       level: current.level ?? undefined,
@@ -135,9 +97,8 @@ export default function PhrasesPage() {
   };
 
   const tts = async (id: string, lang: "en" | "de" = "de") => {
-    const t = await ensureAuth();
-    if (!t) return;
-    const res = await adminTtsPhrase(t, id, lang);
+    const current = phrases.find((p) => p.id === id);
+    const res = await authedApi.adminTtsPhrase(id, lang);
     if (res.ok) {
       setPhrases((prev) =>
         prev.map((p) =>
@@ -164,15 +125,13 @@ export default function PhrasesPage() {
   };
 
   const play = async (id: string, lang: "en" | "de" = "de") => {
-    const t = await ensureAuth();
-    if (!t) return;
-    const res = await adminFetchPhraseAudio(t, id, lang);
+    const res = await authedApi.adminFetchPhraseAudio(id, lang);
     if (res.ok && res.data) {
       const key = `${id}-${lang}`;
       setAudioUrls((prev) => ({ ...prev, [key]: res.data }));
       const audio = new Audio(res.data);
-      audio.play();
-    } else {
+      void audio.play();
+    } else if (!res.ok) {
       setError(res.error ?? "Failed to load audio");
     }
   };

@@ -1,34 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  adminListUsers,
-  adminBlockUser,
-  fetchMe,
-  logout,
-  refreshTokens,
-  updateProfile,
-  changePassword,
-  type MeResponse,
-} from "../lib/api";
-import {
-  getToken,
-  clearToken,
-  getRefreshToken,
-  setRefreshToken,
-  setToken as storeAccessToken,
-  clearRefreshToken,
-} from "../lib/token";
+import { logout, type MeResponse } from "../lib/api";
+import { clearToken, clearRefreshToken } from "../lib/token";
+import { useAuthedApi } from "../lib/authedApi";
+import { useTokenState } from "../lib/useTokenState";
 import { Modal } from "./components/Modal";
 import { useRef } from "react";
 
 export default function HomePage() {
-  const router = useRouter();
+  const authedApi = useAuthedApi();
+  const token = useTokenState();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
-  const [refreshToken, setRefreshState] = useState<string | null>(null);
   const [usersOpen, setUsersOpen] = useState(false);
   const [users, setUsers] = useState<
     Array<{ id: string; email: string; role: string; createdAt: string; isActive: boolean; isBlocked: boolean; firstName: string; lastName: string; userName: string }>
@@ -51,49 +35,25 @@ export default function HomePage() {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Read token on client after mount to avoid SSR/client mismatch.
-    const stored = getToken();
-    const storedRefresh = getRefreshToken();
-    setTokenState(stored);
-    setRefreshState(storedRefresh);
-  }, []);
+    if (!token) {
+      setMe(null);
+    }
+  }, [token]);
 
   useEffect(() => {
     const load = async () => {
       if (!token) return;
-      const res = await fetchMe(token);
+      const res = await authedApi.fetchMe();
       if (res.ok) {
         setMe(res.data);
         setError(null);
-      } else {
-        // Try refresh once if we have a refresh token
-        const rt = refreshToken ?? getRefreshToken();
-        if (rt) {
-          const r = await refreshTokens(rt);
-          if (r.ok) {
-            storeAccessToken(r.data.accessToken);
-            setRefreshToken(r.data.refreshToken);
-            setTokenState(r.data.accessToken);
-            setRefreshState(r.data.refreshToken);
-            const retry = await fetchMe(r.data.accessToken);
-            if (retry.ok) {
-              setMe(retry.data);
-              setError(null);
-              return;
-            }
-          }
-        }
-        clearToken();
-        clearRefreshToken();
-        setTokenState(null);
-        setRefreshState(null);
-        setMe(null);
-        setError(res.error ?? "Not authenticated");
-        router.push("/signin");
+        return;
       }
+      setMe(null);
+      setError(res.error ?? "Not authenticated");
     };
-    load();
-  }, [token, refreshToken, router]);
+    void load();
+  }, [token, authedApi]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -111,8 +71,6 @@ export default function HomePage() {
     clearToken();
     clearRefreshToken();
     setMe(null);
-    setTokenState(null);
-    setRefreshState(null);
   };
 
   const openUsers = async () => {
@@ -120,42 +78,25 @@ export default function HomePage() {
     setMenuOpen(false);
     setUsersOpen(true);
     setUsersLoading(true);
-    const res = await adminListUsers(token);
+    const res = await authedApi.adminListUsers();
     setUsersLoading(false);
     if (res.ok) {
       setUsers(res.data.users);
       setUsersError(null);
       return;
     }
-    // try refresh once
-    const rt = refreshToken ?? getRefreshToken();
-    if (rt) {
-      const r = await refreshTokens(rt);
-      if (r.ok) {
-        storeAccessToken(r.data.accessToken);
-        setRefreshToken(r.data.refreshToken);
-        setTokenState(r.data.accessToken);
-        setRefreshState(r.data.refreshToken);
-        const retry = await adminListUsers(r.data.accessToken);
-        if (retry.ok) {
-          setUsers(retry.data.users);
-          setUsersError(null);
-          return;
-        }
-      }
-    }
     setUsers([]);
     setUsersError(res.error ?? "Failed to load users");
   };
 
   const toggleBlock = async (userId: string, block: boolean) => {
-    if (!token) return;
-    const res = await adminBlockUser(token, userId, block);
-    if (!res.ok) {
-      setUsersError(res.error ?? "Failed to update user");
+    const res = await authedApi.adminBlockUser(userId, block);
+    if (res.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBlocked: block } : u)));
+      setUsersError(null);
       return;
     }
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBlocked: block } : u)));
+    setUsersError(res.error ?? "Failed to update user");
   };
 
   const openProfile = () => {
@@ -178,9 +119,9 @@ export default function HomePage() {
   };
 
   const saveProfile = async () => {
-    if (!token || !me) return;
+    if (!me) return;
     setProfileSaving(true);
-    const res = await updateProfile(token, {
+    const res = await authedApi.updateProfile({
       email: profileEmail,
       firstName: profileFirst,
       lastName: profileLast,
@@ -195,13 +136,12 @@ export default function HomePage() {
   };
 
   const savePassword = async () => {
-    if (!token) return;
     if (newPassword !== confirmNewPassword) {
       setPasswordError("Passwords do not match");
       return;
     }
     setPasswordSaving(true);
-    const res = await changePassword(token, { currentPassword, newPassword });
+    const res = await authedApi.changePassword({ currentPassword, newPassword });
     setPasswordSaving(false);
     if (!res.ok) {
       setPasswordError(res.error ?? "Failed to update password");
